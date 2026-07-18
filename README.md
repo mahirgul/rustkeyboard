@@ -11,7 +11,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **A lightweight, native RGB LED controller for MSI-based gaming laptops**
-*Built with Rust + eframe/egui — no bloated software needed.*
+*Built with Rust + Native Windows Win32 API — no bloated software needed.*
 
 [Features](#-features) • [Screenshots](#-screenshots) • [Installation](#-installation) • [Compatibility](#-compatibility) • [Building](#%EF%B8%8F-building-from-source) • [Hotkey](#-hotkey) • [FAQ](#-faq)
 
@@ -155,8 +155,8 @@ This builds in release mode and copies the exe to the project root.
 ```
 rustkeyboard/
 ├── src/
-│   ├── main.rs          # Entry point, theme setup
-│   ├── gui.rs           # Full egui UI (cards, controls, event handling)
+│   ├── main.rs          # Entry point, registers window class and starts loops
+│   ├── window.rs        # Native Win32 window (controls, custom drawing, events)
 │   ├── i18n.rs          # Localization (EN/DE/TR translations)
 │   ├── hid.rs           # USB HID communication with MSI keyboards
 │   ├── hook.rs          # Global keyboard hook (Fn+F8 mode cycling)
@@ -218,7 +218,7 @@ Settings are stored in `config.json` next to the executable:
 > Yes! Open `src/hid.rs` and add your PID to the `MSI_PIDS` array. You can find your keyboard's PID using [USBDeview](https://www.nirsoft.net/utils/usb_devices_view.html) or Device Manager.
 
 **Q: How does the background CPU usage remain at 0%?**
-> The application utilizes native Win32 window style transitions (`WS_EX_TOOLWINDOW` and `SW_MINIMIZE`) when minimizing to the system tray. This avoids the common `winit` event-loop busy-spin bug that occurs when hiding window handles. In addition, the accessibility helper feature `AccessKit` is disabled at build time to prevent background polling threads from waking up the CPU.
+> The application is built entirely using the native Win32 API, eliminating GUI framework overhead. When minimized to the system tray, the window is hidden (`SW_HIDE`), and standard Win32 message loop processing handles the system tray events, guaranteeing 0% CPU consumption.
 
 ---
 
@@ -226,11 +226,9 @@ Settings are stored in `config.json` next to the executable:
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
-| `eframe` | 0.29.1 | GUI framework (egui-based) |
 | `hidapi` | 2.6.2 | USB HID communication |
 | `serde` + `serde_json` | 1.0 | JSON config serialization |
 | `windows-sys` | 0.52.0 | Win32 API (hooks, tray, window management) |
-| `image` | 0.25 | Image processing |
 | `rand` | 0.9 | Randomness |
 | `embed-resource` | 2.5 | Build-time icon embedding |
 

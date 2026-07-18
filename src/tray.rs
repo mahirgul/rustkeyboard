@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use crate::globals::{MAIN_HWND, WM_TRAYICON};
+use crate::globals::{MAIN_HWND, WM_RESTORE_WINDOW, WM_TRAYICON};
 
 pub fn start_tray_icon_thread() {
     std::thread::spawn(|| {
@@ -17,7 +17,6 @@ pub fn start_tray_icon_thread() {
 
             dbg_log("Tray thread started");
 
-            // Window class name - static so it won't be dropped
             static CLASS_NAME_BYTES: &[u16] = &[
                 b'R' as u16,
                 b'K' as u16,
@@ -36,21 +35,30 @@ pub fn start_tray_icon_thread() {
             ) -> LRESULT {
                 unsafe {
                     if msg == WM_TRAYICON {
-                        // On newer Windows, LOWORD(lparam) is the event
                         let event = (lparam & 0xFFFF) as u32;
 
                         fn show_main_window() {
-                            crate::globals::RESTORE_FLAG.store(true, Ordering::SeqCst);
-                            if let Some(ctx) = &*crate::globals::EGUI_CTX.lock().unwrap() {
-                                ctx.request_repaint();
+                            // First, post a message so the main window updates its UI
+                            let main_hwnd = MAIN_HWND.load(Ordering::SeqCst);
+                            if main_hwnd != 0 {
+                                unsafe {
+                                    PostMessageW(
+                                        main_hwnd as isize as HWND,
+                                        WM_RESTORE_WINDOW,
+                                        0,
+                                        0,
+                                    );
+                                }
                             }
-                            // Retry up to 20 times (2 seconds) waiting for MAIN_HWND
-                            for _ in 0..20 {
+
+                            // Then directly show the window via Win32 API
+                            // Retry up to 10 times (1 second) waiting for MAIN_HWND
+                            for _ in 0..10 {
                                 let h = MAIN_HWND.load(Ordering::SeqCst);
                                 if h != 0 {
                                     unsafe {
                                         use windows_sys::Win32::UI::WindowsAndMessaging::{
-                                            GWL_EXSTYLE, GetWindowLongW, SW_RESTORE,
+                                            GWL_EXSTYLE, GetWindowLongW, SW_SHOW,
                                             SetForegroundWindow, SetWindowLongW, ShowWindow,
                                             WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
                                         };
@@ -60,7 +68,7 @@ pub fn start_tray_icon_thread() {
                                         ex_style |= WS_EX_APPWINDOW;
                                         SetWindowLongW(h as isize, GWL_EXSTYLE, ex_style as i32);
 
-                                        ShowWindow(h as isize, SW_RESTORE);
+                                        ShowWindow(h as isize, SW_SHOW);
                                         SetForegroundWindow(h as isize);
                                     }
                                     dbg_log(&format!("show_main_window() called, hwnd={}", h));
@@ -124,7 +132,6 @@ pub fn start_tray_icon_thread() {
             let atom = RegisterClassW(&wnd_class);
             dbg_log(&format!("RegisterClassW returned atom={}", atom));
 
-            // Create message-only window (HWND_MESSAGE = -3)
             let hwnd = CreateWindowExW(
                 0,
                 CLASS_NAME_BYTES.as_ptr(),
@@ -134,7 +141,7 @@ pub fn start_tray_icon_thread() {
                 0,
                 0,
                 0,
-                -3isize as HWND, // HWND_MESSAGE
+                -3isize as HWND,
                 0,
                 0,
                 std::ptr::null(),
@@ -146,13 +153,11 @@ pub fn start_tray_icon_thread() {
                 return;
             }
 
-            // Load the icon from embedded resource (no external file needed)
             let hinstance = GetModuleHandleW(std::ptr::null());
             let icon_name: Vec<u16> = "keyboard_icon\0".encode_utf16().collect();
             let hicon = LoadImageW(hinstance, icon_name.as_ptr(), IMAGE_ICON, 16, 16, 0) as HICON;
             dbg_log(&format!("LoadImageW (embedded) icon handle={}", hicon));
 
-            // Create the tray icon
             let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
             nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
             nid.hWnd = hwnd;
@@ -168,7 +173,6 @@ pub fn start_tray_icon_thread() {
             let result = Shell_NotifyIconW(NIM_ADD, &nid);
             dbg_log(&format!("Shell_NotifyIconW NIM_ADD result={}", result));
 
-            // Message loop
             let mut msg: MSG = std::mem::zeroed();
             dbg_log("Entering message loop");
             while GetMessageW(&mut msg, 0, 0, 0) > 0 {
@@ -177,7 +181,6 @@ pub fn start_tray_icon_thread() {
             }
             dbg_log("Message loop exited");
 
-            // Cleanup
             Shell_NotifyIconW(NIM_DELETE, &nid);
         }
     });

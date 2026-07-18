@@ -2,30 +2,29 @@
 
 mod config;
 mod globals;
-mod gui;
 mod hid;
 mod hook;
 mod i18n;
 mod startup;
 mod tray;
+mod window;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     hook::start_keyboard_hook();
     tray::start_tray_icon_thread();
 
-    let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_title("Rust Keyboard LED Controller")
-            .with_inner_size([350.0, 520.0])
-            .with_min_inner_size([300.0, 400.0])
-            .with_resizable(true),
-        ..Default::default()
-    };
-    eframe::run_native(
-        "Rust Keyboard LED Controller",
-        options,
-        Box::new(|cc| Ok(Box::new(gui::KeyboardApp::new(cc)) as Box<dyn eframe::App>)),
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
+    if let Err(e) = window::AppWindow::create() {
+        let title: Vec<u16> = "Error\0".encode_utf16().collect();
+        let msg: Vec<u16> = format!("Failed to create window: {}\0", e)
+            .encode_utf16()
+            .collect();
+        unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
+                0, // HWND = 0
+                msg.as_ptr(),
+                title.as_ptr(),
+                windows_sys::Win32::UI::WindowsAndMessaging::MB_ICONERROR,
+            );
+        }
+    }
 }
