@@ -50,6 +50,10 @@ pub fn start_tray_icon_thread() {
                         let event = (lparam & 0xFFFF) as u32;
 
                         fn show_main_window() {
+                            crate::globals::RESTORE_FLAG.store(true, Ordering::SeqCst);
+                            if let Some(ctx) = &*crate::globals::EGUI_CTX.lock().unwrap() {
+                                ctx.request_repaint();
+                            }
                             // Retry up to 20 times (2 seconds) waiting for MAIN_HWND
                             for _ in 0..20 {
                                 let h = MAIN_HWND.load(Ordering::SeqCst);

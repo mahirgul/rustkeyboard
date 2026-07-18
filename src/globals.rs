@@ -2,6 +2,7 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 
 pub static TOGGLE_FLAG: AtomicBool = AtomicBool::new(false);
+pub static RESTORE_FLAG: AtomicBool = AtomicBool::new(false);
 pub static LAST_VK: AtomicU32 = AtomicU32::new(0);
 
 pub static EGUI_CTX: std::sync::Mutex<Option<eframe::egui::Context>> = std::sync::Mutex::new(None);

@@ -133,6 +133,10 @@ impl eframe::App for KeyboardApp {
             self.config = load_config().unwrap_or_default();
             self.status = t.status_hotkey.to_string();
         }
+        if crate::globals::RESTORE_FLAG.swap(false, Ordering::SeqCst) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
         if ctx.input(|i| i.viewport().close_requested()) && self.config.close_to_tray {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
