@@ -1,58 +1,92 @@
-use std::os::windows::process::CommandExt;
-use std::process::Command;
+use windows_sys::Win32::System::Registry::*;
 
-/// Create a PowerShell command with CREATE_NO_WINDOW to prevent console flash
-fn powershell(script: &str) -> std::io::Result<std::process::Output> {
-    Command::new("powershell.exe")
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
-        .args(["-NoProfile", "-Command", script])
-        .output()
+fn wstr(s: &str) -> Vec<u16> {
+    s.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
 /// Check if "Start on Boot" is enabled in Windows Registry
 pub fn is_startup_enabled() -> bool {
-    fn check_registry(hive: &str) -> bool {
-        let cmd = format!(
-            "Get-ItemProperty -Path '{0}:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'RustKeyboardGUI' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty RustKeyboardGUI -ErrorAction SilentlyContinue",
-            hive
-        );
-        if let Ok(out) = powershell(&cmd) {
-            !String::from_utf8_lossy(&out.stdout).trim().is_empty()
-        } else {
-            false
+    let subkey = wstr(r"Software\Microsoft\Windows\CurrentVersion\Run");
+    let value_name = wstr("RustKeyboardGUI");
+
+    unsafe {
+        for &hive in &[HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
+            let mut hkey = 0;
+            if RegOpenKeyExW(hive, subkey.as_ptr(), 0, KEY_READ, &mut hkey) == 0 {
+                let mut data_type = 0;
+                let mut cb_data = 0;
+                let status = RegQueryValueExW(
+                    hkey,
+                    value_name.as_ptr(),
+                    std::ptr::null_mut(),
+                    &mut data_type,
+                    std::ptr::null_mut(),
+                    &mut cb_data,
+                );
+                RegCloseKey(hkey);
+                if status == 0 {
+                    return true;
+                }
+            }
         }
     }
-
-    check_registry("HKLM") || check_registry("HKCU")
+    false
 }
 
 /// Enable or disable "Start on Boot" via Windows Registry
 pub fn set_startup(enable: bool) -> std::io::Result<()> {
-    if enable {
-        let current_exe = std::env::current_exe()?;
-        let exe_path = current_exe.to_string_lossy().replace('\'', "''");
+    let subkey = wstr(r"Software\Microsoft\Windows\CurrentVersion\Run");
+    let value_name = wstr("RustKeyboardGUI");
 
-        // Try HKLM first (all users, requires admin)
-        let cmd_hklm = format!(
-            "Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'RustKeyboardGUI' -Value '\"{}\"'",
-            exe_path
-        );
-        let output = powershell(&cmd_hklm)?;
-        if !output.status.success() {
-            // Fallback to HKCU if HKLM fails (no admin rights)
-            let cmd_hkcu = format!(
-                "Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'RustKeyboardGUI' -Value '\"{}\"'",
-                exe_path
-            );
-            let _ = powershell(&cmd_hkcu)?;
+    unsafe {
+        if enable {
+            let current_exe = std::env::current_exe()?;
+            let exe_path = current_exe.to_string_lossy().to_string();
+            let formatted_path = format!("\"{}\"", exe_path);
+            let path_w = wstr(&formatted_path);
+            let cb_data = (path_w.len() * 2) as u32;
+
+            // Try HKLM first (requires admin/write access)
+            let mut hkey = 0;
+            let mut status =
+                RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey.as_ptr(), 0, KEY_WRITE, &mut hkey);
+            if status == 0 {
+                status = RegSetValueExW(
+                    hkey,
+                    value_name.as_ptr(),
+                    0,
+                    REG_SZ,
+                    path_w.as_ptr() as *const u8,
+                    cb_data,
+                );
+                RegCloseKey(hkey);
+            }
+
+            if status != 0 {
+                // Fallback to HKCU
+                let mut hkey = 0;
+                if RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_WRITE, &mut hkey) == 0 {
+                    let _ = RegSetValueExW(
+                        hkey,
+                        value_name.as_ptr(),
+                        0,
+                        REG_SZ,
+                        path_w.as_ptr() as *const u8,
+                        cb_data,
+                    );
+                    RegCloseKey(hkey);
+                }
+            }
+        } else {
+            // Delete from both HKLM and HKCU silently
+            for &hive in &[HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
+                let mut hkey = 0;
+                if RegOpenKeyExW(hive, subkey.as_ptr(), 0, KEY_WRITE, &mut hkey) == 0 {
+                    let _ = RegDeleteValueW(hkey, value_name.as_ptr());
+                    RegCloseKey(hkey);
+                }
+            }
         }
-    } else {
-        let _ = powershell(
-            "Remove-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'RustKeyboardGUI' -ErrorAction SilentlyContinue",
-        );
-        let _ = powershell(
-            "Remove-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'RustKeyboardGUI' -ErrorAction SilentlyContinue",
-        );
     }
     Ok(())
 }

@@ -182,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "rustkeyboard"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "embed-resource",
  "hidapi",

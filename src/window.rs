@@ -301,19 +301,19 @@ impl AppWindow {
     //  │  ┌─ Color Configuration ───────────────────┐ │ y=220
     //  │  │  [#1][#2][#3][#4][#5][#6][#7]          │ │
     //  │  └─────────────────────────────────────────┘ │ y=276
-    //  │  Language: [ComboBox               ▼]       │ y=288
-    //  │  ┌─ Options ───────────────────────────────┐ │ y=320
+    //  │  ┌─ Options ───────────────────────────────┐ │ y=288
     //  │  │ ☐ Start on Boot                         │ │
     //  │  │ ☐ Close to Tray                         │ │
-    //  │  └─────────────────────────────────────────┘ │ y=390
-    //  │  ┌─ Actions ───────────────────────────────┐ │ y=400
+    //  │  │ ☐ Start in Tray                         │ │
+    //  │  │ Language: [ComboBox               ▼]     │ │
+    //  │  └─────────────────────────────────────────┘ │ y=406
+    //  │  ┌─ Actions ───────────────────────────────┐ │ y=414
     //  │  │ [💾 Save & Apply]     (full width)      │ │
     //  │  │ [⚡ Force Wake Up]    (full width)      │ │
     //  │  │ [🔄 Refresh Status]   (full width)      │ │
-    //  │  │ ☐ Start in Tray                         │ │
     //  │  │ [❌ Exit Application] (full width, red)  │ │
-    //  │  └─────────────────────────────────────────┘ │ y=600
-    //  │  Fn+F8: Cycle hardware modes                │ y=612
+    //  │  └─────────────────────────────────────────┘ │ y=566
+    //  │  Fn+F8: Cycle hardware modes                │ y=574
     //  └──────────────────────────────────────────────┘ y=660
     // ══════════════════════════════════════════════════════
 
@@ -403,38 +403,41 @@ impl AppWindow {
             );
         }
 
-        // ── Language ─────────────────────────────────────
-        let ly: i32 = cy + 66;
-        self.create_label_wh(t.language_label, 18, ly + 2, 80, 22, 0);
-        self.hwnd_language = self.create_combo(IDC_LANGUAGE, 100, ly, 150, 260);
-        self.populate_language_combo(t);
-
         // ── Options ─────────────────────────────────────
-        let oy: i32 = ly + 34;
-        self.create_group(t.options_title, 8, oy, ww - 16, 62, self.hfont_section);
+        let oy: i32 = cy + 66;
+        self.create_group(t.options_title, 8, oy, ww - 16, 118, self.hfont_section);
         self.hwnd_autostart =
             self.create_checkbox(t.opt_start_boot, IDC_AUTOSTART, 18, oy + 22, ww - 40, 20);
         self.hwnd_close_tray =
             self.create_checkbox(t.opt_close_tray, IDC_CLOSE_TRAY, 18, oy + 44, ww - 40, 20);
+        self.hwnd_start_tray = self.create_checkbox(
+            t.opt_start_in_tray,
+            IDC_START_TRAY,
+            18,
+            oy + 66,
+            ww - 40,
+            20,
+        );
+
+        self.create_label_wh(t.language_label, 18, oy + 90, 80, 22, 0);
+        self.hwnd_language = self.create_combo(IDC_LANGUAGE, 100, oy + 88, 150, 260);
+        self.populate_language_combo(t);
 
         // ── Actions ─────────────────────────────────────
-        let ay: i32 = oy + 72;
-        self.create_group(t.actions_title, 8, ay, ww - 16, 178, self.hfont_section);
+        let ay: i32 = oy + 126;
+        self.create_group(t.actions_title, 8, ay, ww - 16, 152, self.hfont_section);
 
         // Stacked buttons - full width
         let bx: i32 = 18;
         let bw: i32 = ww - 44;
 
         self.create_button(t.save_apply, IDC_SAVE, bx, ay + 22, bw, 30);
-        self.create_button(t.act_force_wakeup, IDC_WAKEUP, bx, ay + 56, bw, 30);
-        self.create_button(t.act_refresh, IDC_REFRESH, bx, ay + 90, bw, 30);
-
-        self.hwnd_start_tray =
-            self.create_checkbox(t.opt_start_in_tray, IDC_START_TRAY, bx, ay + 128, bw, 20);
-        self.create_button(t.act_exit, IDC_EXIT, bx, ay + 152, bw, 30);
+        self.create_button(t.act_force_wakeup, IDC_WAKEUP, bx, ay + 54, bw, 30);
+        self.create_button(t.act_refresh, IDC_REFRESH, bx, ay + 86, bw, 30);
+        self.create_button(t.act_exit, IDC_EXIT, bx, ay + 118, bw, 30);
 
         // ── Info ─────────────────────────────────────────
-        let iy: i32 = ay + 186;
+        let iy: i32 = ay + 160;
         self.create_label_wh(
             &format!("  {}", t.fn_f8_info),
             14,
@@ -925,13 +928,6 @@ impl AppWindow {
     fn restore_from_tray(&mut self) {
         if !self.is_visible {
             self.is_visible = true;
-            let t = i18n::translations(self.config.language_enum());
-            self.status = get_keyboard_status();
-            self.autostart = is_startup_enabled();
-            self.update_status_text();
-            self.update_checkboxes();
-            self.update_controls_from_config();
-            self.update_brightness_label(&t);
             unsafe {
                 let mut ex = GetWindowLongW(self.hwnd, GWL_EXSTYLE) as u32;
                 ex &= !WS_EX_TOOLWINDOW;
@@ -940,6 +936,13 @@ impl AppWindow {
                 ShowWindow(self.hwnd, SW_SHOW);
                 SetForegroundWindow(self.hwnd);
             }
+            let t = i18n::translations(self.config.language_enum());
+            self.status = get_keyboard_status();
+            self.autostart = is_startup_enabled();
+            self.update_status_text();
+            self.update_checkboxes();
+            self.update_controls_from_config();
+            self.update_brightness_label(&t);
         }
     }
 
