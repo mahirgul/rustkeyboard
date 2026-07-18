@@ -135,12 +135,7 @@ impl eframe::App for KeyboardApp {
         }
         if ctx.input(|i| i.viewport().close_requested()) && self.config.close_to_tray {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            let h = MAIN_HWND.load(Ordering::SeqCst);
-            if h != 0 {
-                unsafe {
-                    windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(h as isize, 0);
-                }
-            }
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
             self.status = t.status_tray.to_string();
         }
 
