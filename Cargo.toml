@@ -1,0 +1,25 @@
+[package]
+name = "rustkeyboard"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hidapi = "2.6.2"
+eframe = "0.29.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+image = "0.25"
+windows-sys = { version = "0.52.0", features = [
+    "Win32_Foundation",
+    "Win32_System_Services",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Storage_FileSystem",
+    "Win32_UI_Shell",
+    "Win32_System_LibraryLoader"
+] }
+
+rand = "0.9"
+
+[build-dependencies]
+embed-resource = "2.5"

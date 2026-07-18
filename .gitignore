@@ -1,0 +1,21 @@
+# Rust build artifacts
+/target/
+
+# Local configuration and debug logs
+/config.json
+/tray_debug.log
+/err.txt
+/out.txt
+
+# Executables (compiled at root)
+/rustkeyboard.exe
+
+# IDE files
+/.idea/
+/.vscode/
+*.rs.bk
+*.user
+
+# Deep history and backups
+/.deep/
+/config_backup.json
