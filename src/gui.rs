@@ -98,6 +98,19 @@ impl KeyboardApp {
 
 impl eframe::App for KeyboardApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Limit frame rate to maximum 30 FPS to prevent high CPU usage on high-refresh-rate screens or when V-Sync is disabled
+        static mut LAST_FRAME_TIME: Option<std::time::Instant> = None;
+        unsafe {
+            let now = std::time::Instant::now();
+            if let Some(last) = LAST_FRAME_TIME {
+                let elapsed = now.duration_since(last);
+                let min_frame_duration = std::time::Duration::from_millis(33); // ~30 FPS limit
+                if elapsed < min_frame_duration {
+                    std::thread::sleep(min_frame_duration - elapsed);
+                }
+            }
+            LAST_FRAME_TIME = Some(std::time::Instant::now());
+        }
         let t = i18n::translations(self.config.language_enum());
 
         // ── First-frame setup ──────────────────────────
