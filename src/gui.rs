@@ -57,6 +57,7 @@ pub struct KeyboardApp {
     status: String,
     autostart: bool,
     first_frame: bool,
+    is_visible: bool,
 }
 
 impl KeyboardApp {
@@ -92,12 +93,26 @@ impl KeyboardApp {
             status,
             autostart,
             first_frame: true,
+            is_visible: true,
         }
     }
 }
 
 impl eframe::App for KeyboardApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // ── 1. Check if we need to restore the window from the tray ──
+        if crate::globals::RESTORE_FLAG.swap(false, Ordering::SeqCst) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+            self.is_visible = true;
+        }
+
+        // ── 2. Check if the window is currently invisible ──
+        if !self.is_visible {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            return;
+        }
+
         // Limit frame rate to maximum 30 FPS to prevent high CPU usage on high-refresh-rate screens or when V-Sync is disabled
         static mut LAST_FRAME_TIME: Option<std::time::Instant> = None;
         unsafe {
@@ -133,13 +148,10 @@ impl eframe::App for KeyboardApp {
             self.config = load_config().unwrap_or_default();
             self.status = t.status_hotkey.to_string();
         }
-        if crate::globals::RESTORE_FLAG.swap(false, Ordering::SeqCst) {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-        }
         if ctx.input(|i| i.viewport().close_requested()) && self.config.close_to_tray {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.is_visible = false;
             self.status = t.status_tray.to_string();
         }
 
