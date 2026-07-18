@@ -32,7 +32,7 @@ MSI gaming laptops (and MSI-based OEM brands like **Game Garaj**) ship with keyb
 - 🎨 Directly controls your keyboard LEDs via **USB HID** — no MSI Center needed
 - 🔧 **Automatically recovers** keyboards stuck in bootloader mode (Artery MCU)
 - ⌨️ **Fn+F8 hotkey** to cycle through hardware lighting modes instantly
-- 🖥️ Runs silently in the **system tray** with minimal resource usage (~2 MB RAM)
+- 🖥️ Runs silently in the **system tray** with **0% CPU** usage when minimized
 - 🌍 Supports **English**, **German (Deutsch)**, and **Turkish (Türkçe)** interfaces
 
 ---
@@ -216,6 +216,9 @@ Settings are stored in `config.json` next to the executable:
 
 **Q: Can I add my own MSI keyboard PID?**
 > Yes! Open `src/hid.rs` and add your PID to the `MSI_PIDS` array. You can find your keyboard's PID using [USBDeview](https://www.nirsoft.net/utils/usb_devices_view.html) or Device Manager.
+
+**Q: How does the background CPU usage remain at 0%?**
+> The application utilizes native Win32 window style transitions (`WS_EX_TOOLWINDOW` and `SW_MINIMIZE`) when minimizing to the system tray. This avoids the common `winit` event-loop busy-spin bug that occurs when hiding window handles. In addition, the accessibility helper feature `AccessKit` is disabled at build time to prevent background polling threads from waking up the CPU.
 
 ---
 

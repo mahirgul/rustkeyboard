@@ -156,3 +156,15 @@ pub fn save_config(config: &KeyboardConfig) -> std::io::Result<()> {
     let content = serde_json::to_string_pretty(config)?;
     fs::write(get_config_path(), content)
 }
+
+pub fn dbg_log(msg: &str) {
+    use std::io::Write;
+    let log_path = format!("{}\\tray_debug.log", get_app_dir());
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
+        let _ = writeln!(f, "[{:?}] {}", std::time::SystemTime::now(), msg);
+    }
+}

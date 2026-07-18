@@ -4,17 +4,7 @@ use crate::globals::{MAIN_HWND, WM_TRAYICON};
 
 pub fn start_tray_icon_thread() {
     std::thread::spawn(|| {
-        fn dbg_log(msg: &str) {
-            use std::io::Write;
-            let log_path = format!("{}\\tray_debug.log", crate::config::get_app_dir());
-            if let Ok(mut f) = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&log_path)
-            {
-                let _ = writeln!(f, "[{:?}] {}", std::time::SystemTime::now(), msg);
-            }
-        }
+        use crate::config::dbg_log;
 
         unsafe {
             use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -59,10 +49,19 @@ pub fn start_tray_icon_thread() {
                                 let h = MAIN_HWND.load(Ordering::SeqCst);
                                 if h != 0 {
                                     unsafe {
-                                        windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
-                                            h as isize, 9, // SW_RESTORE
-                                        );
-                                        windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow(h as isize);
+                                        use windows_sys::Win32::UI::WindowsAndMessaging::{
+                                            GWL_EXSTYLE, GetWindowLongW, SW_RESTORE,
+                                            SetForegroundWindow, SetWindowLongW, ShowWindow,
+                                            WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+                                        };
+                                        let mut ex_style =
+                                            GetWindowLongW(h as isize, GWL_EXSTYLE) as u32;
+                                        ex_style &= !WS_EX_TOOLWINDOW;
+                                        ex_style |= WS_EX_APPWINDOW;
+                                        SetWindowLongW(h as isize, GWL_EXSTYLE, ex_style as i32);
+
+                                        ShowWindow(h as isize, SW_RESTORE);
+                                        SetForegroundWindow(h as isize);
                                     }
                                     dbg_log(&format!("show_main_window() called, hwnd={}", h));
                                     return;
