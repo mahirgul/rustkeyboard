@@ -1,5 +1,8 @@
 # ⌨️ RustKeyboard — MSI Keyboard RGB LED Controller
 
+<img width="410" height="589" alt="image" src="https://github.com/user-attachments/assets/7b55dfb6-d93b-461e-b735-609643dba31c" />
+
+
 <div align="center">
 
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
