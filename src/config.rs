@@ -87,9 +87,9 @@ impl KeyboardConfig {
 impl Default for KeyboardConfig {
     fn default() -> Self {
         Self {
-            mode: 1,        // Static
-            speed: 1,       // Medium
-            brightness: 10, // Max
+            mode: 1,       // Static
+            speed: 1,      // Medium
+            brightness: 9, // Max
             colors: vec![
                 [255, 255, 255], // Color 0: White
                 [255, 0, 0],     // Color 1: Red

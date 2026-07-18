@@ -251,6 +251,10 @@ impl AppWindow {
         }
 
         let t = i18n::translations(self.config.language_enum());
+        // Force max brightness (9) on startup
+        self.config.brightness = 9;
+        let _ = save_config(&self.config);
+
         self.create_controls(&t);
 
         for i in 0..7 {
@@ -380,13 +384,14 @@ impl AppWindow {
             )
         };
         unsafe {
-            SendMessageW(self.hwnd_brightness, TBM_SETRANGE, 1, (3u32 << 16) as isize);
+            SendMessageW(self.hwnd_brightness, TBM_SETRANGE, 1, (9u32 << 16) as isize);
             SendMessageW(self.hwnd_brightness, TBM_SETTICFREQ, 1, 0);
-            let bp = (3i32 - self.config.brightness.min(3) as i32) as isize;
+            let bp = self.config.brightness.min(9) as isize;
             SendMessageW(self.hwnd_brightness, TBM_SETPOS, 1, bp);
         }
         self.hwnd_brightness_label =
             self.create_label_wh("", 298, gy + 80, 100, 22, self.hfont_small);
+        self.update_brightness_label(t);
 
         // ── Color Configuration ─────────────────────────
         let cy: i32 = gy + 126;
@@ -660,9 +665,11 @@ impl AppWindow {
         self.combo_select(self.hwnd_effect, self.config.mode.min(6) as usize);
         self.combo_select(self.hwnd_speed, self.config.speed.min(2) as usize);
         unsafe {
-            let bp = (3i32 - self.config.brightness.min(3) as i32) as isize;
+            let bp = self.config.brightness.min(9) as isize;
             SendMessageW(self.hwnd_brightness, TBM_SETPOS, 1, bp);
         }
+        let t = i18n::translations(self.config.language_enum());
+        self.update_brightness_label(&t);
         self.update_checkboxes();
     }
 
@@ -689,12 +696,14 @@ impl AppWindow {
     }
 
     fn update_brightness_label(&self, t: &crate::i18n::Translations) {
-        let text = match self.config.brightness {
-            0 | 1 => t.speed_slow,
-            2 => t.speed_medium,
-            _ => t.speed_fast,
-        };
-        self.set_text(self.hwnd_brightness_label, text);
+        if self.config.brightness == 0 {
+            self.set_text(self.hwnd_brightness_label, t.mode_off);
+        } else {
+            self.set_text(
+                self.hwnd_brightness_label,
+                &self.config.brightness.to_string(),
+            );
+        }
     }
 
     fn update_color_button(&mut self, idx: usize) {
@@ -898,7 +907,7 @@ impl AppWindow {
             || code == TB_THUMBTRACK as u16
         {
             let pos = unsafe { SendMessageW(self.hwnd_brightness, TBM_GETPOS, 0, 0) };
-            self.config.brightness = (3u8).saturating_sub(pos as u8);
+            self.config.brightness = pos as u8;
             let t = i18n::translations(self.config.language_enum());
             self.update_brightness_label(&t);
         }
