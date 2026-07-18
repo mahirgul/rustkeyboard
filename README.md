@@ -55,11 +55,8 @@ MSI gaming laptops (and MSI-based OEM brands like **Game Garaj**) ship with keyb
 
 ### 🛠️ Other Features
 - **7-zone color customization** — pick any color for each keyboard zone
-- **Brightness control** — 11 levels (0–10) with visual segmented bar
-- **Speed control** — adjustable for hardware modes
-- **System tray** — minimize to tray, runs in background
+- **System tray** — minimize to tray, runs in background with 0% CPU usage
 - **Start on boot** — optional Windows auto-start via Registry
-- **Start in tray** — launch directly to system tray
 - **Bootloader recovery** — auto-detect and wake up stuck keyboards
 - **Fn+F8 hotkey** — cycle through all 7 hardware modes with a single keypress
 - **Multi-language UI** — English 🇬🇧, Deutsch 🇩🇪, Türkçe 🇹🇷
@@ -197,11 +194,11 @@ Settings are stored in `config.json` next to the executable:
 | Field | Type | Description |
 |-------|------|-------------|
 | `mode` | `0-6` | Hardware effect mode |
-| `speed` | `0-2` | Hardware effect speed (Slow/Medium/Fast) |
-| `brightness` | `0-10` | LED brightness level |
+| `speed` | `0-2` | Hardware effect speed (Slow/Medium/Fast) *[config-only]* |
+| `brightness` | `0-10` | LED brightness level *[config-only]* |
 | `colors` | `[R,G,B]×7` | 7 RGB color zones |
 | `close_to_tray` | `bool` | Minimize to tray instead of closing |
-| `start_in_tray` | `bool` | Start minimized to system tray |
+| `start_in_tray` | `bool` | Start minimized to system tray *[config-only]* |
 | `language` | `"en"/"de"/"tr"` | UI language |
 
 ---
