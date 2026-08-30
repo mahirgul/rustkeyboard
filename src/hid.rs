@@ -3,7 +3,7 @@ use crate::config::{KeyboardConfig, save_config};
 // ── Helpers ────────────────────────────────────────────────
 
 /// MSI keyboard PIDs to try when opening the device
-const MSI_PIDS: [u16; 3] = [5474, 5475, 5476];
+const MSI_PIDS: [u16; 3] = [1564, 5475, 5476];
 
 /// Try to open an MSI keyboard device through any known PID
 pub fn open_msi_keyboard(hid: &hidapi::HidApi) -> Option<hidapi::HidDevice> {
